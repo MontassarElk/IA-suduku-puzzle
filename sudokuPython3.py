@@ -113,25 +113,16 @@ def eliminate_from_location(values, section, location):
 
     # If a value appears in the intersection and not in the rest of the section,
     # we can eliminate that value from the rest of the column / row.
-    intersection_values = ""
-    for key in intersections:
-        val = values[key]
-        if len(val) > 1:
-            intersection_values += val
+    intersection_values = set(''.join(map(values.__getitem__, intersections)))
+    difference_values = set(''.join(map(values.__getitem__, differences)))
 
-    difference_values = ""
-    for key in differences:
-        val = values[key]
-        if len(val) > 1:
-            difference_values += values[key]
-
-    candidates = set(intersection_values).difference(set(difference_values))
+    candidates = [candidate for candidate in intersection_values if candidate not in difference_values]
 
     if len(candidates) > 0:
         for candidate in candidates:
             for box in others:
-                if candidate in values[box]:
-                    eliminate(values, box, candidate)
+                eliminate(values, box, candidate)
+
     return values
 
 
@@ -147,7 +138,6 @@ def eliminate_locked_candidates(grid_values):
             row = set(UNITLIST[9 + j + math.floor(i / 3) * 3])
             grid_values = eliminate_from_location(grid_values, section, row)
     return grid_values
-
 
 # Second heuristic -- Finding naked pairs
 def find_naked_pairs(grid_values):
@@ -194,22 +184,25 @@ def depth_first_search(values, useNorvig, useHeuristics):
     else:
         if type(values) is not bool and useHeuristics and not useNorvig:
             eliminate_locked_candidates(values)
-            # find_naked_pairs(values)
+            find_naked_pairs(values)
             if all(len(values[s]) == 1 for s in SQUARES):
                 return values
-            if values is False:
-                return False
+            # if values is False:
+            #     return False
 
         if useNorvig:
+            old = values.copy()
             try:
                 n, s = min((len(values[s]), s) for s in SQUARES if len(values[s]) > 1)
                 return some(
                     depth_first_search(assign(values.copy(), s, d), useNorvig, useHeuristics) for d in values[s])
             except:
+                display(old)
+                print("----------------")
                 display(values)
 
         else:
-            s = SQUARES[random.randint(0, len(SQUARES) - 1)]
+            s = random.choice([item for item in SQUARES if not len(values[item]) == 1])
             return some(
                 depth_first_search(assign(values.copy(), s, d), useNorvig, useHeuristics) for d in values[s])
 
@@ -280,11 +273,11 @@ def random_puzzle(N=17):
     return random_puzzle(N)  # Give up and make a new puzzle
 
 
-if __name__ == '__main__':
-    grid1 = '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
-    grid2 = '4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......'
-    hard1 = '.....6....59.....82....8....45........3........6..3.54...325..6..................'
+grid1 = '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
+grid2 = '4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......'
+hard1 = '.....6....59.....82....8....45........3........6..3.54...325..6..................'
 
+if __name__ == '__main__':
     test()
     # solve_all(from_file("top95.txt"), "95sudoku", None)
     # solve_all(from_file("easy50.txt", '========'), "easy", None)
@@ -294,14 +287,42 @@ if __name__ == '__main__':
     # solve_all([random_puzzle() for _ in range(99)], "random", 100.0)
 
     # Question 1
-    solve_all(from_file("top95.txt"), False, False, "1000 Grids - DFS", None)
-    solve_all(from_file("top95.txt"), True, False, "1000 Grids - DFS Norvig", None)
-    solve_all(from_file("top95.txt"), False, True, "1000 Grids - DFS H", None)
-    solve_all(from_file("top95.txt"), True, True, "1000 Grids - DFS Norvig H", None)
+    print("-=- TOP 95 -=-")
+    solve_all(from_file("top95.txt"), False, False, "[TOP 95] DFS", None)
+    solve_all(from_file("top95.txt"), True, False, "[TOP 95] DFS Norvig", None)
+    solve_all(from_file("top95.txt"), False, True, "[TOP 95] DFS H", None)
+    solve_all(from_file("top95.txt"), True, True, "[TOP 95] DFS Norvig H", None)
+    print("-=- 100 SUDOKU -=-")
+    solve_all(from_file("100sudoku.txt"), False, False, "[100] DFS", None)
+    solve_all(from_file("100sudoku.txt"), True, False, "[100] DFS Norvig", None)
+    solve_all(from_file("100sudoku.txt"), False, True, "[100] DFS H", None)
+    solve_all(from_file("100sudoku.txt"), True, True, "[100] DFS Norvig H", None)
+    print("-=- 1000 SUDOKU -=-")
+    solve_all(from_file("1000sudoku.txt"), False, False, "[1000] DFS", None)
+    solve_all(from_file("1000sudoku.txt"), True, False, "[1000] DFS Norvig", None)
+    solve_all(from_file("1000sudoku.txt"), False, True, "[1000] DFS H", None)
+    solve_all(from_file("1000sudoku.txt"), True, True, "[1000] DFS Norvig H", None)
     # Question 2
     # print("\nComparing real depth-first search with Norvig's added criteria:")
     # print("----------------------------------------")
     # print("Solving \"hard1\"")
+
+    # gg = parse_grid(grid2)
+    # display(gg)
+    # # print("===================================================================================")
+    # # display(eliminate_locked_candidates(gg))
+    # # print("===================================================================================")
+    # # display(find_naked_pairs(gg))
+    # # n, s = min((len(gg[s]), s) for s in SQUARES if len(gg[s]) > 1)
+    # # print(n, s)
+    # print("===================================================================================")
+    # s = time.process_time()
+    # display(depth_first_search(gg.copy(), True, True))
+    # print((time.process_time()-s) * 1000)
+    # s = time.process_time()
+    # display(depth_first_search(gg.copy(), True, False))
+    # print((time.process_time()-s) * 1000)
+
 
     # display(grid_values(hard1))
     # print("\nDFS")
