@@ -1,38 +1,27 @@
-# Solve Every Sudoku Puzzle
-
-# See http://norvig.com/sudoku.html
-
-# Throughout this program we have:
-# r is a row,    e.g. 'A'
-# c is a column, e.g. '3'
-# s is a square, e.g. 'A3'
-# d is a digit,  e.g. '9'
-# u is a unit,   e.g. ['A1','B1','C1','D1','E1','F1','G1','H1','I1']
-# grid is a grid,e.g. 81 non-blank chars, e.g. starting with '.18...7...
-# values is a dict of possible values, e.g. {'A1':'12349', 'A2':'8', ...}
-
+# Imports
 import random
 import time
+import math
 
 
 def cross(A, B):
     "Cross product of elements in A and elements in B."
-    return [a+b for a in A for b in B]
+    return [a + b for a in A for b in B]
 
 
+# Constants
 DIGITS = '123456789'
 ROWS = 'ABCDEFGHI'
 COLS = DIGITS
 SQUARES = cross(ROWS, COLS)
+
 UNITLIST = ([cross(ROWS, c) for c in COLS] +
             [cross(r, COLS) for r in ROWS] +
             [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')])
 UNITS = dict((s, [u for u in UNITLIST if s in u])
              for s in SQUARES)
-PEERS = dict((s, set(sum(UNITS[s], []))-set([s]))
+PEERS = dict((s, set(sum(UNITS[s], [])) - set([s]))
              for s in SQUARES)
-
-################ Unit Tests ################
 
 
 def test():
@@ -48,8 +37,6 @@ def test():
                                'C1', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9',
                                'A1', 'A3', 'B1', 'B3'])
     print('All tests pass.')
-
-################ Parse a Grid ################
 
 
 def parse_grid(grid):
@@ -68,8 +55,6 @@ def grid_values(grid):
     chars = [c for c in grid if c in DIGITS or c in '0.']
     assert len(chars) == 81
     return dict(zip(SQUARES, chars))
-
-################ Constraint Propagation ################
 
 
 def assign(values, s, d):
@@ -106,46 +91,128 @@ def eliminate(values, s, d):
                 return False
     return values
 
-################ Display as 2-D grid ################
-
 
 def display(values):
     "Display these values as a 2-D grid."
-    width = 1+max(len(values[s]) for s in SQUARES)
-    line = '+'.join(['-'*(width*3)]*3)
+    width = 1 + max(len(values[s]) for s in SQUARES)
+    line = '+'.join(['-' * (width * 3)] * 3)
     for r in ROWS:
         # Modified display function as it displayed
         # a generator object and not a string
-        print(''.join(list(''.join(values[r+c].center(width)+('|' if c in '36' else ''))
+        print(''.join(list(''.join(values[r + c].center(width) + ('|' if c in '36' else ''))
                            for c in COLS)))
         if r in 'CF':
             print(line)
 
-################ Search ################
 
+def eliminate_from_location(values, section, location):
+    # Find intersections, differences and keep the rest of the column / row for later.
+    intersections = section.intersection(location)
+    differences = section.difference(location)
+    others = location.difference(intersections)
+
+    # If a value appears in the intersection and not in the rest of the section,
+    # we can eliminate that value from the rest of the column / row.
+    intersection_values = ""
+    for key in intersections:
+        val = values[key]
+        if len(val) > 1:
+            intersection_values += val
+
+    difference_values = ""
+    for key in differences:
+        val = values[key]
+        if len(val) > 1:
+            difference_values += values[key]
+
+    candidates = set(intersection_values).difference(set(difference_values))
+
+    if len(candidates) > 0:
+        for candidate in candidates:
+            for box in others:
+                if candidate in values[box]:
+                    eliminate(values, box, candidate)
+    return values
+
+
+# First heuristic implemented.
+# This method will remove candidates intersecting with locked candidates.
+def eliminate_locked_candidates(grid_values):
+    # Iterate over all sections
+    for i in range(0, 9):
+        section = set(UNITLIST[18 + i])
+        for j in range(0, 3):
+            column = set(UNITLIST[j + (i % 3) * 3])
+            grid_values = eliminate_from_location(grid_values, section, column)
+            row = set(UNITLIST[9 + j + math.floor(i / 3) * 3])
+            grid_values = eliminate_from_location(grid_values, section, row)
+    return grid_values
+
+
+# Second heuristic -- Finding naked pairs
+def find_naked_pairs(grid_values):
+    # Iterate over all groups
+    for group in UNITLIST:
+        # Get values of each group that only have two possible values
+        group_values = {key: value for (key, value) in grid_values.items() if key in group and len(value) == 2}
+        # Make sure there is more than a single candidate
+        if len(group_values) > 1:
+            # Here, we check if any candidates have the same pair of values
+            flipped = {}
+            for key, value in group_values.items():
+                if value not in flipped:
+                    flipped[value] = [key]
+                else:
+                    flipped[value].append(key)
+            # Iterate over our new dict
+            for possible_value, indices in flipped.items():
+                # If we find a pair
+                if len(indices) == 2:
+                    # Remove these values from the rest of the group
+                    for case in group:
+                        if case not in indices:
+                            for value in possible_value:
+                                eliminate(grid_values, case, value)
+
+    return grid_values
 
 def solve(grid): return search(parse_grid(grid))
 
 
-def search(values):
-    "Using depth-first search and propagation, try all possible values."
+def solve_depth_first(grid): return search_depth_first(parse_grid(grid))
+
+
+def solvee(grid, useNorvig, useHeuristic):
+    return depth_first_search(parse_grid(grid), useNorvig, useHeuristic)
+
+
+def depth_first_search(values, useNorvig, useHeuristics):
     if values is False:
-        return False  # Failed earlier
+        return False
     if all(len(values[s]) == 1 for s in SQUARES):
-        return values  # Solved!
-    # Chose the unfilled square s with the fewest possibilities
-    # n,s = min((len(values[s]), s) for s in squares if len(values[s]) > 1)
-    # return some(search(assign(values.copy(), s, d))
-    #             for d in values[s])
+        return values
+    else:
+        if type(values) is not bool and useHeuristics and not useNorvig:
+            eliminate_locked_candidates(values)
+            # find_naked_pairs(values)
+            if all(len(values[s]) == 1 for s in SQUARES):
+                return values
+            if values is False:
+                return False
 
-    ###########################################################################
-    # Question 2: L'implementation avec Random choice.
-    s = SQUARES[random.randint(0, len(SQUARES)-1)]
-    return some(search(assign(values.copy(), s, d))
-                for d in values[s])
+        if useNorvig:
+            try:
+                n, s = min((len(values[s]), s) for s in SQUARES if len(values[s]) > 1)
+                return some(
+                    depth_first_search(assign(values.copy(), s, d), useNorvig, useHeuristics) for d in values[s])
+            except:
+                display(values)
 
+        else:
+            s = SQUARES[random.randint(0, len(SQUARES) - 1)]
+            return some(
+                depth_first_search(assign(values.copy(), s, d), useNorvig, useHeuristics) for d in values[s])
 
-################ Utilities ################
 
 def some(seq):
     "Return some element of seq that is true."
@@ -166,17 +233,16 @@ def shuffled(seq):
     random.shuffle(seq)
     return seq
 
-################ System test ################
 
-
-def solve_all(grids, name='', showif=0.0):
+def solve_all(grids, useNorvig, useHeuristic, name='', showif=0.0):
     """Attempt to solve a sequence of grids. Report results.
     When showif is a number of seconds, display puzzles that take longer.
     When showif is None, don't display any puzzles."""
+
     def time_solve(grid):
         start = time.process_time()
-        values = solve(grid)
-        t = time.process_time()-start
+        values = solvee(grid, useNorvig, useHeuristic)
+        t = time.process_time() - start
         # Display puzzles that take long enough
         if showif is not None and t > showif:
             display(grid_values(grid))
@@ -184,16 +250,19 @@ def solve_all(grids, name='', showif=0.0):
                 display(values)
             print('(%.2f seconds)\n' % t)
         return (t, solved(values))
+
     times, results = zip(*[time_solve(grid) for grid in grids])
     N = len(grids)
     if N > 1:
         print("Solved %d of %d %s puzzles (avg %.2f secs (%d Hz), max %.2f secs)." % (
-            sum(results), N, name, sum(times)/N, N/sum(times), max(times)))
+            sum(results), N, name, sum(times) / N, N / sum(times), max(times)))
 
 
 def solved(values):
     "A puzzle is solved if each unit is a permutation of the digits 1 to 9."
+
     def unitsolved(unit): return set(values[s] for s in unit) == set(DIGITS)
+
     return values is not False and all(unitsolved(unit) for unit in UNITLIST)
 
 
@@ -211,11 +280,11 @@ def random_puzzle(N=17):
     return random_puzzle(N)  # Give up and make a new puzzle
 
 
-grid1 = '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
-grid2 = '4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......'
-hard1 = '.....6....59.....82....8....45........3........6..3.54...325..6..................'
-
 if __name__ == '__main__':
+    grid1 = '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
+    grid2 = '4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......'
+    hard1 = '.....6....59.....82....8....45........3........6..3.54...325..6..................'
+
     test()
     # solve_all(from_file("top95.txt"), "95sudoku", None)
     # solve_all(from_file("easy50.txt", '========'), "easy", None)
@@ -224,15 +293,41 @@ if __name__ == '__main__':
     # solve_all(from_file("hardest.txt"), "hardest", None)
     # solve_all([random_puzzle() for _ in range(99)], "random", 100.0)
 
-    #############################################################################
     # Question 1
-    solve_all(from_file("100sudoku.txt"), "100sudoku", None)
-    #############################################################################
-    display(solve(hard1))
+    solve_all(from_file("top95.txt"), False, False, "1000 Grids - DFS", None)
+    solve_all(from_file("top95.txt"), True, False, "1000 Grids - DFS Norvig", None)
+    solve_all(from_file("top95.txt"), False, True, "1000 Grids - DFS H", None)
+    solve_all(from_file("top95.txt"), True, True, "1000 Grids - DFS Norvig H", None)
+    # Question 2
+    # print("\nComparing real depth-first search with Norvig's added criteria:")
+    # print("----------------------------------------")
+    # print("Solving \"hard1\"")
 
-
-# References used:
-# http://www.scanraid.com/BasicStrategies.htm
-# http://www.sudokudragon.com/sudokustrategy.htm
-# http://www.krazydad.com/blog/2005/09/29/an-index-of-sudoku-strategies/
-# http://www2.warwick.ac.uk/fac/sci/moac/currentstudents/peter_cock/python/sudoku/
+    # display(grid_values(hard1))
+    # print("\nDFS")
+    # start = time.process_time()
+    # values = solvee(grid2, False, False)
+    # end = time.process_time()-start
+    # print(f"Solved: {solved(values)}")
+    # print("Process took %f ms" % (end * 1000))
+    # #
+    # print("\nDFS + Heuristic")
+    # start = time.process_time()
+    # values = solvee(grid2, False, True)
+    # end = time.process_time()-start
+    # print(f"Solved: {solved(values)}")
+    # print("Process took %f ms" % (end * 1000))
+    # #
+    # print("\nDFS + Norvig")
+    # start = time.process_time()
+    # values = solvee(grid2, True, False)
+    # end = time.process_time() - start
+    # print(f"Solved: {solved(values)}")
+    # print("Process took %f ms" % (end * 1000))
+    #
+    # print("\nDFS + Norvig + Heuristic")
+    # start = time.process_time()
+    # values = solvee(grid2, True, True)
+    # end = time.process_time() - start
+    # print(f"Solved: {solved(values)}")
+    # print("Process took %f ms" % (end * 1000))
