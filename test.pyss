@@ -1,0 +1,135 @@
+# First heuristic implemented.
+# This method will remove candidates intersecting with locked candidates.
+def eliminate_locked_candidates(grid):
+    def eliminate_from_location(grid_values, section, location):
+        # Find intersections, differences and keep the rest of the column / row for later.
+        intersection = section.intersection(col)
+        difference = section.difference(intersection)
+        rest_of_location = location.difference(intersection)
+        # If a value appears in the intersection and not in the rest of the section,
+        # we can eliminate that value from the rest of the column / row.
+        intersection_values = ""
+        difference_values = ""
+        for key in intersection:
+            if len(grid_values[key]) > 1:
+                intersection_values += (grid_values[key])
+        for key in difference:
+            if len(grid_values[key]) > 1:
+                difference_values += (grid_values[key])
+        # Check if any values only occur in the intersection with column / row.
+        intersection_values = set(intersection_values)
+        difference_values = set(difference_values)
+        values = intersection_values.difference(difference_values)
+        # If values exist
+        if values:
+            for value in values:
+                for case in rest_of_location:
+                    if len(grid_values[case]) > 1 and value in grid_values[case]:
+                        # Remove them from the other sections (same column / row)
+                        reduced = eliminate(grid_values, case, value)
+                        if reduced is False:
+                            continue
+                        else:
+                            grid_values = reduced
+        return grid_values
+
+    for i in range(0, 9):
+        # Iterate over sections.
+        section = set(UNITLIST[18 + i])
+        # Iterate over rows and columns.
+        for j in range(0, 3):
+            col = set(UNITLIST[j + (i % 3) * 3])
+            grid = eliminate_from_location(grid, section, col)
+            row = set(UNITLIST[9 + j + math.floor(i / 3) * 3])
+            grid = eliminate_from_location(grid, section, row)
+
+    return grid
+
+
+# # First heuristic implemented.
+# # This method will remove candidates intersecting with locked candidates.
+# def eliminate_locked_candidates(grid):
+#     def eliminate_from_location(grid, section, location):
+#         # Find intersections, differences and keep the rest of the column / row for later.
+#         intersection  = section.intersection(location)
+#         difference    = section.difference(intersection)
+#         rest_of_location  = location.difference(intersection)
+#         # If a value appears in the intersection and not in the rest of the section,
+#         # we can eliminate that value from the rest of the column / row.
+#         intersection_values = ""
+#         difference_values   = ""
+#         for key in intersection:
+#             if len(grid[key]) > 1:
+#                 intersection_values += (grid[key])
+#         for key in difference:
+#             if len(grid[key]) > 1:
+#                 difference_values   += (grid[key])
+#         # Check if any values only occur in the intersection with column / row.
+#         intersection_values = set(intersection_values)
+#         difference_values = set(difference_values)
+#         values = intersection_values.difference(difference_values)
+#         # If values exist
+#         if values:
+#             for value in values:
+#                 for case in rest_of_location:
+#                     if len(grid[case]) > 1 and value in grid[case]:
+#                         # Remove them from the other sections (same column / row)
+#                         reduced = eliminate(grid, case, value)
+#                         if reduced is False:
+#                             continue;
+#                         else:
+#                             grid = reduced
+#         return grid
+#     for i in range(0,9):
+#         # Iterate over sections.
+#         section = set(UNITLIST[18 + i])
+#         # Iterate over rows and columns.
+#         for j in range(0,3):
+#             col = set(UNITLIST[j + (i % 3) * 3])
+#             grid = eliminate_from_location(grid, section, col)
+#             row = set(UNITLIST[9 + j + math.floor(i / 3) * 3])
+#             grid = eliminate_from_location(grid, section, row)
+#     return grid
+# First heuristic implemented.
+# This method will remove candidates intersecting with locked candidates.
+def eliminate_locked_candidates(grid):
+    for i in range(0, 9):
+        # Iterate over sections.
+        section = set(UNITLIST[18 + i])
+        # Iterate over rows and columns.
+        for j in range(0, 3):
+            col = set(UNITLIST[j + (i % 3) * 3])
+#             row = set(UNITLIST[9 + j + math.floor(i / 3) * 3])
+            # Find intersections, differences and keep the rest of the column / row for later.
+            intersection = section.intersection(col)
+            difference = section.difference(intersection)
+            rest_of_location = col.difference(intersection)
+            # If a value appears in the intersection and not in the rest of the section,
+            # we can eliminate that value from the rest of the column / row.
+            intersection_values = ""
+            difference_values = ""
+            for key in intersection:
+                if len(grid[key]) > 1:
+                    intersection_values += (grid[key])
+            for key in difference:
+                if len(grid[key]) > 1:
+                    difference_values += (grid[key])
+            # Check if any values only occur in the intersection with column / row.
+            intersection_values = set(intersection_values)
+            difference_values = set(difference_values)
+            values = intersection_values.difference(difference_values)
+            # If values exist
+            if values:
+                print(f"Now in {intersection_values}")
+                for value in values:
+                    for case in rest_of_location:
+                        if len(grid[case]) > 1 and value in grid[case]:
+                            print(
+                                f"\tEliminating {values} from {case} with {grid[case]}")
+                            # Remove them from the other sections (same column / row)
+                            reduced = eliminate(grid, case, value)
+                            if reduced is False:
+                                continue
+                            else:
+                                grid = reduced
+    return grid
