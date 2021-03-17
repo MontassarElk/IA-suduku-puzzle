@@ -1,7 +1,7 @@
 import math
-import sudokuPython3
-
-
+from sudokuPython3 import *
+from SA.SA import *
+import random
 def init_hill_climbing(values):
     # Dictionary that keeps initial (fixed) values
     fixed_values = dict()
@@ -14,11 +14,11 @@ def init_hill_climbing(values):
         # Iterate over section values
         for (key, value) in section_values.items():
             # Case when multiple values are possible
-            if len(value) > 1:
+            if  value == '0':
                 # Set key as not fixed
                 fixed_values[key] = False
                 # Assign random possible value
-                values[key] = str(possible_values.pop(0))
+                values[key] = str(possible_values.pop(random.randint(0, len(possible_values) - 1)))
             else:
                 # If value is assigned, set as fixed value
                 fixed_values[key] = True
@@ -42,6 +42,9 @@ def evaluate_grid(values):
 
 
 def hill_climbing_step(values, fixed_values):
+
+
+
     # Keep our current
     current_score = evaluate_grid(values)
     # Keep track of scores depending on value swap
@@ -82,11 +85,39 @@ def hill_climbing_step(values, fixed_values):
 
 def hill_climbing(values):
     # Find fixed values and randomly place values in sections
+
     fixed_values = init_hill_climbing(values)
     while True:
         # Make a step in algorithm
+
         swap = hill_climbing_step(values, fixed_values)
         # If method returns false, algorithm is done
         # - Either no more swaps are available, or grid is solved
+
         if not swap:
             return values
+
+
+
+def solve_all_hill_climbing(grids, name='', showif=0.0):
+    """Attempt to solve a sequence of grids. Report results.
+    When showif is a number of seconds, display puzzles that take longer.
+    When showif is None, don't display any puzzles."""
+    def time_solve(grid):
+        start = time.process_time()
+        values = hill_climbing(grid_values(grid))
+        t = time.process_time()-start
+        # Display puzzles that take long enough
+        if showif is not None and t > showif:
+            display(grid_values(grid))
+            if values:
+                display(values)
+            print('(%.2f seconds)\n' % t)
+        return (t, solved(values))
+    times, results = zip(*[time_solve(grid) for grid in grids])
+    N = len(grids)
+    if N > 1:
+        print("Solved %d of %d %s puzzles (avg %.2f secs (%d Hz), max %.2f secs)." % (
+            sum(results), N, name, sum(times)/N, N/sum(times), max(times)))
+
+solve_all_hill_climbing(from_file("100sudoku.txt"), "sudoku100forannealing", None)

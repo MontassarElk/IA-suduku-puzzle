@@ -71,7 +71,7 @@ def get_fixied(value):
         square = units[item][2]
         tab = []
         for pos in square:
-            if value[pos] in '.0':
+            if not(value[pos] in '.0'):
                 tab.append(pos)
         fixed.append(tab)
     return fixed
@@ -79,15 +79,22 @@ def get_fixied(value):
     Choisir deux positions au hasard dans un carre au hasard et les interchange.
 """
 def flip_random_pair(values, fixed):
-    square = random.choice(squares_3x3)
-    positions = [i for i in square if i not in fixed]
+
+    index = random.randint(0,8)
+
+    square = squares_3x3[index]
+
+    fix = fixed[index]
+
+
+    positions = [i for i in square if i not in fix]
+
     if (len(positions) < 2): return flip_random_pair(values, fixed)
+
 
     pos1, pos2 = random.sample(positions, k=2)
 
-    temp = values[pos1]
-    values[pos1] = values[pos2]
-    values[pos2] = temp
+
     return pos1,pos2
 
 
@@ -153,25 +160,26 @@ def swap(pos1, pos2, val):
 
     return values
 
-
+def get_cost(value):
+    return count_row_error(value) + count_lines_error(value)
 """
 La fonction simaled annealing
 
 """
 def SA(value):
     fixed = get_fixied(value)
+
     ## remplir par random au debut
-    value = fill_squares_by_random(value)
-
-
+    value = fill_squares_by_random(value.copy())
 
     ## calculer le score courrant
-    current_score = count_row_error(value) + count_lines_error(value)
+    current_score = get_cost(value)
     temperature = 3
+    t0 = temperature
     alpha = 0.99
     if current_score == 0:
         return value
-
+    tim = 0
     while current_score != 0:
 
         # my_display(value)
@@ -179,8 +187,10 @@ def SA(value):
 
         val = swap(pos1,pos2,value)
 
-        new_socre = count_row_error(val) + count_lines_error(val)
 
+
+        new_socre = get_cost(val)
+        print('current socre ', current_score, 'new score',new_socre , 'time ' , tim)
         # doit-on faire le swap??
         should_swap = False
 
@@ -193,13 +203,25 @@ def SA(value):
             if random.random() < eq:
                 should_swap = True
 
-        if should_swap or (current_score == new_socre):
+        if should_swap:
             current_score = new_socre
             value = val.copy()
+            tim = 0
         else:
-            pass
+            tim += 1
+
+        if tim == 40:
+            temperature = t0
+            tim = 0
+        # if (new_socre == 5):
+        #     break
         temperature *= alpha
 
+        # if temperature < 0.001:
+        #     break
+
+
+    # print('resolu  ##############')
     return value
 
 
@@ -240,4 +262,7 @@ def solve_all_simulated_annealing(grids, name='', showif=0.0):
 
 if __name__ == '__main__':
 
-    solve_all_simulated_annealing(from_file("1000sudoku.txt"), "sudoku100forannealing", None)
+    # solve_all_simulated_annealing(from_file("100sudoku.txt"), "sudoku100forannealing", None)
+    gird = '200060000007004086000001300000000040090000000480000710900078000000050002020600501'
+    val = grid_values(gird)
+    SA(val)
