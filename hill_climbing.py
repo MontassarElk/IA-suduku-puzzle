@@ -2,11 +2,11 @@ import math
 import sudokuPython3
 
 
-def init_hill_climbing(values, sections=UNITLIST[18:]):
+def init_hill_climbing(values):
     # Dictionary that keeps initial (fixed) values
     fixed_values = dict()
     # Iterate over each section
-    for section in sections:
+    for section in UNITLIST[18:]:
         # Get section values as dict
         section_values = {key: value for (key, value) in values.items() if key in section}
         # Create possible values
@@ -25,10 +25,10 @@ def init_hill_climbing(values, sections=UNITLIST[18:]):
     return fixed_values
 
 
-def evaluate_grid(values, lines=UNITLIST[0:18]):
+def evaluate_grid(values):
     score = 0
     # Iterate over rows and columns
-    for line in lines:
+    for line in UNITLIST[0:18]:
         # Get line values
         line_values = list(''.join(map(values.__getitem__, line)))
         # Create dictionary that holds {key = assigned_value, value = repetitions)
@@ -41,13 +41,13 @@ def evaluate_grid(values, lines=UNITLIST[0:18]):
     return score
 
 
-def hill_climbing_step(values, fixed_values, sections=UNITLIST[18::]):
+def hill_climbing_step(values, fixed_values):
     # Keep our current
     current_score = evaluate_grid(values)
     # Keep track of scores depending on value swap
     swap_scores = dict()
     # Iterate over each section
-    for section in sections:
+    for section in UNITLIST[18::]:
         for value in section:
             # IF value is fixed, go to next value
             if fixed_values[value]:
